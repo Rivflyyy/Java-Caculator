@@ -85,7 +85,7 @@ public class BasicCalculator {
         return button;
     }
 
-    private class ButtonClickListener implements ActionListener {
+    public class ButtonClickListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             String command = e.getActionCommand();
@@ -127,9 +127,21 @@ public class BasicCalculator {
     /**
      * 解析和计算表达式
      */
+//    protected double evaluateExpression(String expression) {
+//        try {
+//            return evaluateWithFunctions(expression);
+//        } catch (Exception ex) {
+//            System.err.println("计算错误: " + expression);
+//            throw new IllegalArgumentException("无法计算表达式: " + expression, ex);
+//        }
+//    }
     protected double evaluateExpression(String expression) {
         try {
             System.out.println("正在计算: " + expression);
+
+            // 替换 x 为实际值
+            expression = expression.replace("x", "{x}"); // 暂时替换为占位符
+
             return evaluateWithFunctions(expression);
         } catch (Exception ex) {
             System.err.println("计算错误: " + expression);
@@ -140,17 +152,16 @@ public class BasicCalculator {
     /**
      * 解析表达式中科学函数的计算
      */
+
+// 修改 evaluateWithFunctions 方法，确保可以正确解析并计算含有x的积分和微分表达式
     protected double evaluateWithFunctions(String expression) {
-        // 打印初始表达式
         System.out.println("初始表达式: " + expression);
 
         // 替换科学函数为 Java 表达式
-        if (expression.contains("ln")) {
-            expression = expression.replaceAll("ln\\(", "Math.log(");
-        }
-        if (expression.contains("log10")) {
-            expression = expression.replaceAll("log10\\(", "Math.log10(");
-        }
+        expression = expression.replaceAll("ln\\(", "Math.log(");
+        expression = expression.replaceAll("log10\\(", "Math.log10(");
+        expression = expression.replaceAll("∫\\(", "Math.integrate(");
+        expression = expression.replaceAll("d\\(", "Math.differentiate(");
 
         // 打印修正后的表达式
         System.out.println("修正后的表达式: " + expression);
@@ -161,20 +172,46 @@ public class BasicCalculator {
 
         // 匹配并处理科学函数
         while (matcher.find()) {
-            String fullMatch = matcher.group(0); // 完整的函数匹配，例如 Math.log10(100)
-            String functionName = matcher.group(1); // 函数名，例如 log10
-            String innerExpression = matcher.group(2); // 括号内的表达式，例如 100
+            String fullMatch = matcher.group(0); // 完整的函数匹配
+            String functionName = matcher.group(1); // 函数名
+            String innerExpression = matcher.group(2); // 括号内的表达式
 
-            // 打印函数名和括号内的表达式
             System.out.println("当前函数: " + functionName);
             System.out.println("括号内的表达式: " + innerExpression);
 
             try {
                 // 递归计算括号内的内容
+                // 根据函数名调用相应的数学函数
+                double result = 0;
+                Pattern pattern1 = Pattern.compile("[^,]+,");
+                Matcher matcher1 = pattern1.matcher(innerExpression);
+                if (matcher1.find()){
+                    switch (functionName){
+                        case "integrate":
+                            String[] integralParts = innerExpression.split(",");
+                            System.out.println("——————积分函数：" + integralParts + "————————");
+                            if (integralParts.length == 3) {
+                                String function = integralParts[0].trim();
+                                double a = Double.parseDouble(integralParts[1].trim());
+                                double b = Double.parseDouble(integralParts[2].trim());
+                                result = integrate(function, a, b); // 调用积分方法
+                            }
+                            break;
+                        case "differentiate":
+                            String[] diffParts = innerExpression.split(",");
+                            if (diffParts.length == 2) {
+                                String function = diffParts[0].trim();
+                                double a = evaluateExpression(diffParts[1].trim());
+                                result = differentiate(function, a); // 调用微分方法
+                            }
+                            break;
+                    }
+                    expression = expression.replace(fullMatch, String.valueOf(result));
+                    break;
+                }
+
                 double innerValue = evaluateExpression(innerExpression);
 
-                // 根据函数名调用相应的数学函数
-                double result;
                 switch (functionName) {
                     case "sin":
                         result = Math.sin(innerValue);
@@ -194,17 +231,31 @@ public class BasicCalculator {
                     case "sqrt":
                         result = Math.sqrt(innerValue);
                         break;
+                    case "integrate":
+                        String[] integralParts = innerExpression.split(",");
+                        System.out.println("——————积分函数：" + integralParts + "————————");
+                        if (integralParts.length == 3) {
+                            String function = integralParts[0].trim();
+                            double a = Double.parseDouble(integralParts[1].trim());
+                            double b = Double.parseDouble(integralParts[2].trim());
+                            result = integrate(function, a, b); // 调用积分方法
+                        }
+                        break;
+                    case "differentiate":
+                        String[] diffParts = innerExpression.split(",");
+                        if (diffParts.length == 2) {
+                            String function = diffParts[0].trim();
+                            double a = evaluateExpression(diffParts[1].trim());
+                            result = differentiate(function, a); // 调用微分方法
+                        }
+                        break;
                     default:
                         throw new UnsupportedOperationException("不支持的函数: " + functionName);
                 }
 
-                // 针对接近零的结果归零处理
                 if (Math.abs(result) < 1E-10) {
-                    result = 0;
+                    result = 0; // 处理接近0的值
                 }
-
-                // 打印函数计算结果
-                System.out.println("函数计算结果: " + result);
 
                 // 替换计算结果到表达式
                 expression = expression.replace(fullMatch, String.valueOf(result));
@@ -214,15 +265,10 @@ public class BasicCalculator {
             }
         }
 
-        // 打印处理后的最终表达式
         System.out.println("处理后的表达式: " + expression);
 
-        // 没有更多科学函数，直接返回基础表达式计算结果
-        return evaluateBasicExpression(expression);
+        return evaluateBasicExpression(expression); // 处理基本数学表达式
     }
-
-
-
 
     /**
      * 解析基础表达式
@@ -327,5 +373,37 @@ public class BasicCalculator {
             case '^' -> Math.pow(a, b);
             default -> throw new UnsupportedOperationException("不支持的操作符: " + operator);
         };
+    }
+    private double integrate(String function, double a, double b) {
+        int n = 1000; // 分割成 1000 个小区间
+        double h = (b - a) / n; // 区间宽度
+        double sum = 0.0;
+
+        for (int i = 0; i < n; i++) {
+            double x1 = a + i * h;
+            double x2 = a + (i + 1) * h;
+
+            // 替换 x 为实际值
+            String functionAtX1 = function.replace("{x}", String.valueOf(x1));
+            String functionAtX2 = function.replace("{x}", String.valueOf(x2));
+
+            // 计算函数值
+            double y1 = evaluateExpression(functionAtX1);
+            double y2 = evaluateExpression(functionAtX2);
+
+            sum += (y1 + y2) / 2 * h; // 梯形面积
+        }
+
+        return sum;
+    }
+
+    private double differentiate(String function, double xValue) {
+        double h = 1e-5; // 微小的增量
+        // 计算 f(x+h) 和 f(x) 之间的差异
+        double fXPlusH = evaluateExpression(function.replace("{x}", String.valueOf(xValue + h)));
+        double fX = evaluateExpression(function.replace("{x}", String.valueOf(xValue)));
+
+        // 使用前向差分法计算数值微分
+        return (fXPlusH - fX) / h;
     }
 }

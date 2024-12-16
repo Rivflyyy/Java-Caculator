@@ -24,8 +24,10 @@ public class ScientificCalculator extends BasicCalculator {
                 "sin", "cos", "tan", "π",
                 "√", "x^2", "x^3", "x^y",
                 "ln", "lg", "!", "e",
-                "(", ")", "1/x", "积分"
+                "(", ")", "1/x", "y√x",
+                "∫", "d", "x", ","
         };
+        // 创建事件监听器实例
 
         for (String button : scientificButtons) {
             JButton btn = createStyledButton(button); // 使用基础方法创建按钮
@@ -34,11 +36,71 @@ public class ScientificCalculator extends BasicCalculator {
 
         frame.add(scientificPanel, BorderLayout.WEST); // 将科学按钮放在左侧
     }
+
+    @Override
+    public JButton createStyledButton(String label) {
+        JButton button = new JButton(label) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
+                g2.setColor(getForeground());
+                FontMetrics fm = g2.getFontMetrics();
+                int textWidth = fm.stringWidth(getText());
+                int textHeight = fm.getHeight();
+                int x = (getWidth() - textWidth) / 2;
+                int y = (getHeight() + textHeight / 2) / 2 - 2;
+                g2.drawString(getText(), x, y);
+            }
+        };
+
+        button.setContentAreaFilled(false);
+        button.setOpaque(true);
+        button.setBackground(Color.WHITE);
+        button.setForeground(Color.BLACK);
+        button.setFocusPainted(false);
+        button.setFont(new Font("楷书", Font.BOLD, 16));
+
+        // 如果按钮属于科学计算器，就使用ScientificButtonClickListener，否则使用ButtonClickListener
+        if (isScientificButton(label)) {
+            button.addActionListener(new ScientificButtonClickListener());
+        } else {
+            button.addActionListener(new ButtonClickListener());
+        }
+
+        return button;
+    }
+
+    private boolean isScientificButton(String label) {
+        String[] scientificButtons = {"sin", "cos", "tan", "π", "√", "x^2", "x^3", "x^y", "ln", "lg", "!", "e", "1/x", "(", ")", "∫", "d", "x", ","};
+        for (String button : scientificButtons) {
+            if (label.equals(button)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private class ScientificButtonClickListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             String command = e.getActionCommand();
             switch (command) {
+                case "∫":
+                    calculationProcess += "∫("; // 使用符号表示积分
+                    break;
+                case "d":
+                    calculationProcess += "d("; // 使用符号表示微分
+                    break;
+                case "x":
+                    calculationProcess += "x"; // 平方
+                    break;
+                case ",":
+                    calculationProcess += ","; // 平方
+                    break;
                 case "sin":
                 case "cos":
                 case "tan":
