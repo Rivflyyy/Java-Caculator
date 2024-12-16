@@ -1,1 +1,1 @@
-The Display.java and ButtonMan
+The Display.java and ButtonManager.java aren't be used.
